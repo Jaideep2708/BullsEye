@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BullsEye — Quantitative Screener</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #111827;
+      --accent: #3b82f6;
+      --text: #f3f4f6;
+      --text-dim: #9ca3af;
+      --buy: #10b981;
+      --sell: #ef4444;
+      --neutral: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 2rem 1rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.025em; }
+    header span { color: var(--accent); }
+    header p { color: var(--text-dim); font-size: 0.95rem; margin-top: 0.25rem; }
+    
+    .search-box { display: flex; gap: 0.75rem; margin-bottom: 2rem; }
+    input { flex: 1; padding: 0.85rem 1.2rem; border-radius: 8px; border: 1px solid #374151; background: var(--card-bg); color: #fff; font-size: 1rem; outline: none; }
+    input:focus { border-color: var(--accent); }
+    button { padding: 0.85rem 1.75rem; background: var(--accent); color: #fff; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: opacity 0.2s; }
+    button:hover { opacity: 0.9; }
+
+    .card { background: var(--card-bg); border: 1px solid #1f2937; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .header-stat { display: flex; justify-content: space-between; align-items: center; }
+    .badge { padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem; }
+    .badge.buy { background: rgba(16, 185, 129, 0.2); color: var(--buy); }
+    .badge.sell { background: rgba(239, 68, 68, 0.2); color: var(--sell); }
+    .badge.neutral { background: rgba(245, 158, 11, 0.2); color: var(--neutral); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1.25rem; }
+    .stat-item { background: #1f2937; padding: 1rem; border-radius: 8px; }
+    .stat-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600; }
+    .stat-value { font-size: 1.35rem; font-weight: 700; margin-top: 0.25rem; }
+
+    .loader { display: none; text-align: center; padding: 2rem; color: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Bulls<span>Eye</span></h1>
+      <p>Quantitative Technical & Risk Analytics Engine</p>
+    </header>
+
+    <div class="search-box">
+      <input type="text" id="tickerInput" placeholder="Enter Ticker (e.g. RELIANCE.NS, TCS.NS, NVDA, AAPL)" value="RELIANCE.NS" />
+      <button onclick="fetchAnalysis()">Scan Ticker</button>
+    </div>
+
+    <div id="loader" class="loader">Running algorithmic screen & market simulation...</div>
+
+    <div id="dashboard" style="display: none;">
+      <div class="card">
+        <div class="header-stat">
+          <div>
+            <h2 id="symbolTitle" style="font-size: 1.6rem;">--</h2>
+            <p id="priceSubtitle" style="color: var(--text-dim); margin-top: 0.2rem;">--</p>
+          </div>
+          <span id="verdictBadge" class="badge">--</span>
+        </div>
+
+        <div class="grid">
+          <div class="stat-item">
+            <div class="stat-label">14-Day RSI</div>
+            <div class="stat-value" id="rsiVal">--</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Annual Volatility</div>
+            <div class="stat-value" id="volVal">--</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">95% Daily VaR</div>
+            <div class="stat-value" id="varVal">--</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">EMA (20 vs 50)</div>
+            <div class="stat-value" id="emaVal">--</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-dim);">Price Trend & 20-Day EMA (Last 30 Sessions)</h3>
+        <canvas id="priceChart" height="110"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let chartInstance = null;
+
+    async function fetchAnalysis() {
+      const ticker = document.getElementById('tickerInput').value.trim();
+      if (!ticker) return;
+
+      const loader = document.getElementById('loader');
+      const dashboard = document.getElementById('dashboard');
+
+      loader.style.display = 'block';
+      dashboard.style.display = 'none';
+
+      try {
+        const res = await fetch(`/api/analyze?ticker=${encodeURIComponent(ticker)}`);
+        if (!res.ok) throw new Error('Failed to fetch data');
+        const data = await res.json();
+
+        document.getElementById('symbolTitle').innerText = data.symbol;
+        const sign = data.change_pct >= 0 ? '+' : '';
+        document.getElementById('priceSubtitle').innerText = `₹${data.current_price} (${sign}${data.change_pct}%)`;
+
+        const badge = document.getElementById('verdictBadge');
+        badge.innerText = data.verdict;
+        badge.className = `badge ${data.verdict_class}`;
+
+        document.getElementById('rsiVal').innerText = data.metrics.rsi;
+        document.getElementById('volVal').innerText = `${data.metrics.annual_volatility}%`;
+        document.getElementById('varVal').innerText = `${data.metrics.var_95}%`;
+        document.getElementById('emaVal').innerText = `${data.metrics.ema_20} / ${data.metrics.ema_50}`;
+
+        renderChart(data.chart);
+        dashboard.style.display = 'block';
+      } catch (err) {
+        alert('Error fetching data for symbol. Please verify ticker.');
+      } finally {
+        loader.style.display = 'none';
+      }
+    }
+
+    function renderChart(chartData) {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartData.labels,
+          datasets: [
+            {
+              label: 'Close Price',
+              data: chartData.prices,
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.05)',
+              fill: true,
+              tension: 0.2
+            },
+            {
+              label: '20 EMA',
+              data: chartData.ema20,
+              borderColor: '#f59e0b',
+              borderDash: [5, 5],
+              fill: false,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#9ca3af' } } },
+          scales: {
+            x: { grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' } },
+            y: { grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' } }
+          }
+        }
+      });
+    }
+
+    // Auto-run on load
+    fetchAnalysis();
+  </script>
+</body>
+</html>

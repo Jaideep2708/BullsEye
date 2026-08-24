@@ -12,7 +12,7 @@
 ## 🚀 Live Demo
 
 - **Live Application:** [https://bulls-eye-git-main-jaideep2708.vercel.app/](https://bulls-eye-git-main-jaideep2708.vercel.app/)
-- **Interactive OpenAPI (Swagger) Docs:** [https://bulls-eye-git-main-jaideep2708.vercel.app/docs](https://bulls-eye-git-main-jaideep2708.vercel.app/docs)
+
 
 ---
 

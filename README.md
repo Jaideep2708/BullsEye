@@ -80,8 +80,7 @@ BullsEye/
 │   └── index.html          # Responsive Chart.js client dashboard
 ├── .gitignore              # Git exclusions (venv, cache, env)
 ├── requirements.txt        # Production Python dependencies
-├── vercel.json             # Vercel serverless routing rewrite rules
-└── test_data.py            # Standalone mathematical verification script
+└── vercel.json             # Vercel serverless routing rewrite rules
 ```
 
 ---

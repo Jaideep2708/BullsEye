@@ -2,9 +2,7 @@ from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 import yfinance as yf
-import pandas as pd
 import numpy as np
-import os
 from pathlib import Path
 
 app = FastAPI(title="BullsEye Quant Engine")
